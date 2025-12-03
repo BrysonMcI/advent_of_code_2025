@@ -8,38 +8,29 @@ fn main() {
 
     let invalid_id_sum = input
         .split(",") // split to ranges
-        .map(|r_str| r_str.split('-').collect()) // split range
-        .map(|r_str_iter: Vec<&str>| {
-            r_str_iter[0].parse::<u128>().unwrap()..=r_str_iter[1].parse::<u128>().unwrap()
+        .map(|r_str| r_str.split_once('-').unwrap()) // split range
+        .map(|r_str_iter: (&str, &str)| {
+            r_str_iter.0.parse::<u64>().unwrap()..=r_str_iter.1.parse::<u64>().unwrap()
         }) // convert to range
-        .filter_map(|r| {
+        .flat_map(|r| {
             r.map(|num| {
                 let num_str = num.to_string();
                 let num_str_len = num_str.len();
-                let mut factors = Vec::new();
+                let bytes = num_str.as_bytes();
+
                 for i in 1..num_str_len {
-                    if num_str_len % i == 0 {
-                        factors.push(i);
+                    if num_str_len % i != 0 {
+                        continue;
                     }
-                }
-                for f in factors {
-                    if num_str
-                        .chars()
-                        .collect::<Vec<char>>() // turn string into vec of chars
-                        .chunks(f) // because vecs can be chunked
-                        .collect::<Vec<&[char]>>() // then turn chunks into an vec
-                        .windows(2) // because vecs can be windowed
-                        .all(|p| p[0] == p[1])
-                    {
+                    let first = &bytes[0..i];
+                    if bytes.chunks(i).all(|chunk| chunk == first) {
                         return num;
                     }
                 }
                 0
             }) // map this number to itself if it is invalid
-            .reduce(|a, b| a + b) // sum this ranges invalid ids
         }) // convert range to sum of invalid ids
-        .reduce(|a, b| a + b) // sum invalid ids
-        .unwrap();
+        .sum::<u64>();
 
     println!("{:?}", invalid_id_sum);
 }
