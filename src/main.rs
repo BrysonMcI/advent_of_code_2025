@@ -6,16 +6,6 @@ fn main() {
         Err(err) => panic!("{:?}", err),
     };
 
-    // no leading 0s
-    // so split in half and if halfs are equal it is invalid
-    // 4 long is either 2 2s or 4 1s
-    // 5 long is 5 1s
-    // 6 long is 2 3s or 3 2s or 6 1s
-
-    // So get the factors of a number
-    // for each factor split the string into groups of that size except the factor that is its own size
-    // check if each part is the same
-
     let invalid_id_sum = input
         .split(",") // split to ranges
         .map(|r_str| r_str.split('-').collect()) // split range
