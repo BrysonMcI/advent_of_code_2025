@@ -8,6 +8,11 @@ fn main() {
 
     let mut factors_store: HashMap<usize, Vec<usize>> = HashMap::with_capacity(12);
     for i in 1..12 {
+        // Part 1
+        // if i % 2 != 0 {
+        //     continue;
+        // }
+        // factors_store.insert(i, vec![i / 2]);
         factors_store.insert(i, (1..i).filter(|j| i % j == 0).collect::<Vec<usize>>());
     }
 
@@ -22,6 +27,11 @@ fn main() {
                 let num_str = num.to_string();
                 let num_str_len = num_str.len();
                 let bytes = num_str.as_bytes();
+
+                // Part 1
+                // if num_str_len % 2 != 0 {
+                //     return 0;
+                // }
 
                 for f in factors_store.get(&num_str_len).unwrap() {
                     let first = &bytes[0..*f];
