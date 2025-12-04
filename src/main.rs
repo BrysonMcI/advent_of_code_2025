@@ -1,10 +1,15 @@
-use std::fs::read_to_string;
+use std::{collections::HashMap, fs::read_to_string};
 
 fn main() {
     let input = match read_to_string("input.txt") {
         Ok(res) => res,
         Err(err) => panic!("{:?}", err),
     };
+
+    let mut factors_store: HashMap<usize, Vec<usize>> = HashMap::with_capacity(12);
+    for i in 1..12 {
+        factors_store.insert(i, (1..i).filter(|j| i % j == 0).collect::<Vec<usize>>());
+    }
 
     let invalid_id_sum = input
         .split(",") // split to ranges
@@ -18,12 +23,9 @@ fn main() {
                 let num_str_len = num_str.len();
                 let bytes = num_str.as_bytes();
 
-                for i in 1..num_str_len {
-                    if num_str_len % i != 0 {
-                        continue;
-                    }
-                    let first = &bytes[0..i];
-                    if bytes.chunks(i).all(|chunk| chunk == first) {
+                for f in factors_store.get(&num_str_len).unwrap() {
+                    let first = &bytes[0..*f];
+                    if bytes.chunks(*f).all(|chunk| chunk == first) {
                         return num;
                     }
                 }
