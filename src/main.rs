@@ -11,14 +11,12 @@ fn main() {
                 let mut digits_to_find = DIGIT_SIZE;
                 let mut last_highest_char_index = 0; // bad name, this is index after
                 while digits_to_find > 0 {
+                    let search_end = line.len() - digits_to_find + 1;
                     let next = line
                         .char_indices()
-                        .skip(last_highest_char_index)
-                        .collect::<Vec<_>>()
-                        .into_iter()
-                        .rev()
-                        .skip(digits_to_find - 1)
-                        .max_by(|a, b| a.1.cmp(&b.1))
+                        .skip(last_highest_char_index) // skip to our last highest number
+                        .take_while(|(idx, _)| *idx < search_end) // go search for the next one that leaves us enough remaining digits
+                        .max_by(|a, b| a.1.cmp(&b.1).then_with(|| b.0.cmp(&a.0))) // take the highest next one, but closest to the front
                         .unwrap();
                     highest_chars[DIGIT_SIZE - digits_to_find] =
                         next.1.to_digit(10).unwrap() as u64;
