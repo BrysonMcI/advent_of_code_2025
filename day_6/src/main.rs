@@ -1,38 +1,43 @@
-const PROBLEM_SIZE: usize = 5;
+fn calc(operator: u8, problem: &[u64]) -> u64 {
+    match operator {
+        b'+' => problem.iter().sum::<u64>(),
+        b'*' => problem
+            .iter()
+            .copied()
+            .reduce(|accu, el| accu * el)
+            .unwrap(),
+        bad => panic!("bad operator: {:?}", bad),
+    }
+}
 
 fn main() {
     let input = std::fs::read_to_string("input.txt").unwrap();
-    let mut split_lines: Vec<_> = input.lines().map(|l| l.split_whitespace()).collect();
-    let mut problems: Vec<Vec<&str>> = Vec::new();
-    loop {
-        let mut problem: Vec<&str> = Vec::with_capacity(PROBLEM_SIZE);
-        for l in split_lines.iter_mut() {
-            match l.next() {
-                Some(item) => problem.push(item),
-                None => break,
-            }
-        }
-        if problem.is_empty() {
-            break;
-        }
 
-        problems.push(problem);
-    }
-    println!("{:?}", problems);
+    let mut byte_lines: Vec<&[u8]> = input.lines().map(|l| l.as_bytes()).collect();
     let mut total: u64 = 0;
-    for problem in problems {
-        total += match problem[PROBLEM_SIZE - 1] {
-            "*" => problem[0..PROBLEM_SIZE - 1]
+
+    let mut cur_operator: u8 = b' ';
+    let mut cur_problem: Vec<u64> = Vec::with_capacity(5); // based on max input size
+    // right to left doesn't seem to matter? Could .rev() this but I get the same answer
+    for (idx, el) in (*byte_lines.pop().unwrap()).iter().enumerate() {
+        if byte_lines.iter().all(|line| line[idx] == b' ') {
+            total += calc(cur_operator, &cur_problem);
+            cur_problem.clear();
+            cur_operator = b' ';
+            continue;
+        }
+        if *el != b' ' {
+            cur_operator = *el;
+        }
+        cur_problem.push(
+            byte_lines
                 .iter()
-                .map(|s| s.parse::<u64>().unwrap())
-                .reduce(|accu, el| accu * el)
-                .unwrap(),
-            "+" => problem[0..PROBLEM_SIZE - 1]
-                .iter()
-                .map(|s| s.parse::<u64>().unwrap())
-                .sum(),
-            bad => panic!("bad operator: {:?}", bad),
-        };
+                .map(|line| line[idx])
+                .filter(|b| *b != b' ')
+                .fold(0_u64, |acc, b| acc * 10 + (b - b'0') as u64),
+        );
     }
+    total += calc(cur_operator, &cur_problem);
+
     println!("{:?}", total)
 }
