@@ -9,16 +9,29 @@ fn main() {
             let (start, end) = l.split_once("-").unwrap();
             (start.parse().unwrap(), end.parse().unwrap())
         })
-        .fold(BTreeMap::new(), |mut map, (k, v): (u64, u64)| {
-            map.entry(k).and_modify(|e| *e = (*e).max(v)).or_insert(v);
+        .fold(BTreeMap::new(), |mut map, (start, end): (u64, u64)| {
+            let mut merged_start = start;
+            let mut merged_end = end;
+
+            let overlapping: Vec<_> = map
+                .range(..=end)
+                .filter(|(s, e)| !(**e < start || **s > end))
+                .map(|(s, e)| (*s, *e))
+                .collect();
+            for (s, e) in &overlapping {
+                merged_start = merged_start.min(*s);
+                merged_end = merged_end.max(*e);
+            }
+
+            for (s, _) in overlapping {
+                map.remove(&s);
+            }
+            map.insert(merged_start, merged_end);
             map
         });
-    let fresh: Vec<u64> = input
-        .lines()
-        .skip_while(|l| !l.is_empty()) // Jump past the ranges
-        .skip(1) // Jump the empty line
-        .map(|l| l.parse().unwrap())
-        .filter(|id| fresh_id_ranges.range(0..=*id).any(|(_, end)| end >= id))
-        .collect();
-    println!("{:?}", fresh.len());
+    let fresh_id_count: u64 = fresh_id_ranges
+        .iter()
+        .map(|(start, end)| end - start + 1)
+        .sum();
+    println!("{:?}", fresh_id_count);
 }
