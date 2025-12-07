@@ -8,13 +8,12 @@ const SPLIT: u8 = b'^';
 #[derive(Clone, Copy)]
 enum GridItem {
     Char(u8),
-    BeamCount(u8),
+    BeamCount(u64),
 }
 
 fn main() {
     let input = std::fs::read_to_string("input.txt").unwrap();
-    let mut splits: u64 = 0;
-    let lines: Vec<Vec<GridItem>> = input
+    let mut lines: Vec<Vec<GridItem>> = input
         .lines()
         .map(|l| {
             l.as_bytes()
@@ -27,9 +26,9 @@ fn main() {
         })
         .collect();
     let mut last_line = lines[0].clone();
-    for mut line in lines {
+    for line in lines.iter_mut().skip(1) {
         for idx in 0..line.len() {
-            let above_beam_count: u8 = match last_line[idx] {
+            let above_beam_count: u64 = match last_line[idx] {
                 GridItem::BeamCount(count) => count,
                 _ => 0,
             };
@@ -37,14 +36,31 @@ fn main() {
             match (line[idx], above_beam_count > 0) {
                 (GridItem::Char(EMPTY), true) => line[idx] = GridItem::BeamCount(above_beam_count),
                 (GridItem::Char(SPLIT), true) => {
-                    line[idx - 1] = GridItem::BeamCount(above_beam_count); //fix addition
-                    line[idx + 1] = GridItem::BeamCount(above_beam_count);
-                    splits += 1;
+                    line[idx - 1] = match line[idx - 1] {
+                        GridItem::BeamCount(orig) => GridItem::BeamCount(above_beam_count + orig),
+                        _ => GridItem::BeamCount(above_beam_count),
+                    };
+                    line[idx + 1] = match line[idx + 1] {
+                        GridItem::BeamCount(orig) => GridItem::BeamCount(above_beam_count + orig),
+                        _ => GridItem::BeamCount(above_beam_count),
+                    };
+                }
+                (GridItem::BeamCount(orig), true) => {
+                    line[idx] = GridItem::BeamCount(above_beam_count + orig)
                 }
                 _ => (),
             }
         }
         last_line = line.to_vec();
     }
-    println!("{:?}", splits);
+    println!(
+        "{:?}",
+        last_line
+            .iter()
+            .map(|&item| match item {
+                GridItem::BeamCount(count) => count,
+                _ => 0,
+            })
+            .sum::<u64>()
+    )
 }
