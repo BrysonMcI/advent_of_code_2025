@@ -60,6 +60,13 @@ fn main() {
         })
         .collect();
 
+    let mut components: HashMap<usize, Vec<[i64; 3]>> = HashMap::with_capacity(cords_list.len());
+    let mut cord_to_component: HashMap<[i64; 3], usize> = HashMap::with_capacity(cords_list.len());
+    for (idx, cord) in cords_list.iter().enumerate() {
+        components.insert(idx, vec![*cord]);
+        cord_to_component.insert(*cord, idx);
+    }
+
     // pop, connect and recalc next lower on that coord back into minheap
     loop {
         let a = min_heap.pop().unwrap();
@@ -87,12 +94,24 @@ fn main() {
         };
         min_heap.push(new_b);
 
-        let groups = connections.values().cloned().collect::<Vec<_>>();
-        // This would be way faster if I tracked the components over time and which component
-        // each node is in and merged on connection until all components had been merged to one
-        let circuits =
-            pathfinding::undirected::connected_components::separate_components(groups.as_slice());
-        if circuits.1.iter().all(|a| *a == circuits.1[0]) {
+        let to_component = cord_to_component[&a.from];
+        let removed_component = cord_to_component[&a.to];
+        if to_component != removed_component {
+            let mut items_to_move = Vec::new();
+            for cord in components.get(&removed_component).unwrap() {
+                if let Some(val) = cord_to_component.get_mut(cord) {
+                    *val = to_component;
+                };
+                items_to_move.push(*cord);
+            }
+            components
+                .get_mut(&to_component)
+                .unwrap()
+                .append(&mut items_to_move);
+            components.remove(&removed_component);
+        }
+
+        if components.len() == 1 {
             println!("{:?}", a.from[0] * a.to[0]);
             return;
         }
