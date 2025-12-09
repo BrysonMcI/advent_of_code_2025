@@ -61,7 +61,7 @@ fn main() {
         .collect();
 
     // pop, connect and recalc next lower on that coord back into minheap
-    for _ in 0..1000 {
+    loop {
         let a = min_heap.pop().unwrap();
         let b = min_heap.pop().unwrap();
         if let Some(val) = connections.get_mut(&a.from) {
@@ -77,7 +77,7 @@ fn main() {
             distance: to.squared_distance,
             depth: a.depth + 1,
         };
-        min_heap.push(new_a.clone());
+        min_heap.push(new_a);
         let to = kdtree.nearests(&b.from, b.depth + 2)[b.depth + 1];
         let new_b = Connection {
             from: b.from,
@@ -85,25 +85,16 @@ fn main() {
             distance: to.squared_distance,
             depth: b.depth + 1,
         };
-        min_heap.push(new_b.clone());
+        min_heap.push(new_b);
+
+        let groups = connections.values().cloned().collect::<Vec<_>>();
+        // This would be way faster if I tracked the components over time and which component
+        // each node is in and merged on connection until all components had been merged to one
+        let circuits =
+            pathfinding::undirected::connected_components::separate_components(groups.as_slice());
+        if circuits.1.iter().all(|a| *a == circuits.1[0]) {
+            println!("{:?}", a.from[0] * a.to[0]);
+            return;
+        }
     }
-    // drop groups into graph and get components
-    let groups = connections.values().cloned().collect::<Vec<_>>();
-    let circuits =
-        pathfinding::undirected::connected_components::separate_components(groups.as_slice());
-    let mut circuit_size: HashMap<usize, usize> = HashMap::new();
-    for circuit in circuits.1 {
-        *circuit_size.entry(circuit).or_insert(0) += 1;
-    }
-    let mut values = circuit_size.values().cloned().collect::<Vec<usize>>();
-    values.sort();
-    let lenght = values.len();
-    println!(
-        "{:?}",
-        values
-            .into_iter()
-            .skip(lenght - 3)
-            .reduce(|acc, a| acc * a)
-            .unwrap()
-    );
 }
