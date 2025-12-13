@@ -1,44 +1,24 @@
-use pathfinding::prelude::astar;
+use std::collections::HashMap;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)] // Add Clone
 struct Machine {
     goal: Vec<u32>,
     buttons: Vec<Vec<usize>>,
+}
+
+impl Machine {
+    fn with_goal(&self, new_goal: Vec<u32>) -> Machine {
+        Machine {
+            goal: new_goal,
+            buttons: self.buttons.clone(),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 struct State(Vec<u32>);
 
 impl State {
-    fn next_nodes(&self, machine: &Machine) -> Vec<(State, u32)> {
-        println!("{:?}", self);
-        let mut result: Vec<(State, u32)> = Vec::with_capacity(machine.buttons.len());
-        for idx in 0..self.0.len() {
-            let mut new_presses = self.0.clone();
-            new_presses[idx] += 1;
-            let new_state = State(new_presses);
-            if new_state
-                .current_val(machine)
-                .iter()
-                .zip(machine.goal.clone())
-                .any(|(cur, goal)| *cur > goal)
-            {
-                continue;
-            }
-            result.push((new_state, 1));
-        }
-        result
-    }
-
-    fn min_cost_to_end(&self, machine: &Machine) -> u32 {
-        self.current_val(machine)
-            .iter()
-            .zip(machine.goal.clone())
-            .map(|(cur, goal)| goal - cur)
-            .max()
-            .unwrap()
-    }
-
     fn current_val(&self, machine: &Machine) -> Vec<u32> {
         let mut val = vec![0; machine.goal.len()];
         for (but_idx, presses) in self.0.iter().enumerate() {
@@ -50,8 +30,57 @@ impl State {
     }
 }
 
+fn solve_recursive(machine: &Machine, memo: &mut HashMap<Vec<u32>, Option<u32>>) -> Option<u32> {
+    if machine.goal.iter().all(|&g| g == 0) {
+        return Some(0);
+    }
+
+    if let Some(&result) = memo.get(&machine.goal) {
+        return result;
+    }
+
+    let n_buttons = machine.buttons.len();
+    let mut min_cost = None;
+
+    for mask in 0..(1 << n_buttons) {
+        let mut pressed = vec![0; n_buttons];
+        let mut num_pressed = 0;
+
+        for (i, press) in pressed.iter_mut().enumerate() {
+            if (mask >> i) & 1 == 1 {
+                *press = 1;
+                num_pressed += 1;
+            }
+        }
+
+        let state = State(pressed);
+        let current = state.current_val(machine);
+
+        if current
+            .iter()
+            .zip(&machine.goal)
+            .all(|(c, g)| c % 2 == g % 2 && c <= g)
+        {
+            let new_goal: Vec<u32> = machine
+                .goal
+                .iter()
+                .zip(&current)
+                .map(|(g, c)| (g - c) / 2)
+                .collect();
+
+            if let Some(rec_cost) = solve_recursive(&machine.with_goal(new_goal), memo) {
+                let total = 2 * rec_cost + num_pressed;
+                min_cost = Some(min_cost.map_or(total, |mc: u32| mc.min(total)));
+            }
+        }
+    }
+
+    memo.insert(machine.goal.clone(), min_cost);
+    min_cost
+}
+
 fn main() {
-    let input = std::fs::read_to_string("example.txt").unwrap();
+    let input = std::fs::read_to_string("input.txt").unwrap();
     let machines: Vec<Machine> = input
         .lines()
         .map(|l| {
@@ -84,15 +113,9 @@ fn main() {
 
     let mut total = 0;
     for machine in machines {
-        println!("{:?}", machine);
-        let start = State(vec![0; machine.buttons.len()]);
-        let path = astar(
-            &start,
-            |n| n.next_nodes(&machine),
-            |n| n.min_cost_to_end(&machine),
-            |n| n.current_val(&machine) == machine.goal,
-        );
-        total += path.unwrap().1;
+        let mut memo = HashMap::new();
+        let cost = solve_recursive(&machine, &mut memo).unwrap();
+        total += cost;
     }
     println!("{:?}", total);
 }
