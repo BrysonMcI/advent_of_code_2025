@@ -1,12 +1,13 @@
-use pathfinding::prelude::dijkstra;
+use pathfinding::prelude::astar;
 
+#[derive(Debug)]
 struct Machine {
     goal: State,
     buttons: Vec<Vec<u32>>,
 }
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-struct State(Vec<bool>);
+struct State(Vec<i32>);
 
 impl State {
     fn next_nodes(&self, buttons: Vec<Vec<u32>>) -> Vec<(State, u32)> {
@@ -14,11 +15,18 @@ impl State {
         for button in buttons {
             let mut new_state = self.0.clone();
             for idx in button {
-                new_state[idx as usize] = !new_state[idx as usize]
+                new_state[idx as usize] -= 1
+            }
+            if new_state.iter().any(|x| *x < 0) {
+                continue;
             }
             result.push((State(new_state), 1));
         }
         result
+    }
+
+    fn cost(&self) -> u32 {
+        *self.0.iter().max().unwrap() as u32
     }
 }
 
@@ -28,20 +36,9 @@ fn main() {
         .lines()
         .map(|l| {
             let mut split = l.split(' ');
-            let goal = State(
-                split
-                    .next()
-                    .unwrap()
-                    .as_bytes()
-                    .iter()
-                    .filter_map(|b| match b {
-                        b'.' => Some(false),
-                        b'#' => Some(true),
-                        _ => None,
-                    })
-                    .collect(),
-            );
             let buttons: Vec<Vec<u32>> = split
+                .clone()
+                .skip(1)
                 .take_while(|s| s.chars().nth(0).unwrap() == '(')
                 .map(|s| s.chars())
                 .map(|s| {
@@ -52,16 +49,29 @@ fn main() {
                     .collect()
                 })
                 .collect();
+            let goal = State(
+                split
+                    .next_back()
+                    .unwrap()
+                    .replace(['{', '}'], " ")
+                    .trim()
+                    .split(',')
+                    .map(|s| s.parse::<i32>().unwrap())
+                    .collect(),
+            );
+
             Machine { goal, buttons }
         })
         .collect();
 
     let mut total = 0;
     for machine in machines {
-        let path = dijkstra(
+        println!("{:?}", machine);
+        let path = astar(
             &machine.goal,
             |n| n.next_nodes(machine.buttons.clone()),
-            |n| *n == State(vec![false; machine.goal.0.len()]),
+            |n| n.cost(),
+            |n| *n == State(vec![0; machine.goal.0.len()]),
         );
         total += path.unwrap().1;
     }
